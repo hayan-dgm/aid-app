@@ -293,21 +293,11 @@ def login():
         return jsonify({'message': 'Invalid credentials'}), 401
 
 
-# # Get Families Endpoint
-# @app.route('/families', methods=['GET'])
-# @jwt_required()
-# def get_families():
-#     user = get_jwt_identity()
-#     conn = get_db_connection()
-#     families = conn.execute('SELECT * FROM families').fetchall()
-#     conn.close() 
-#     return jsonify([dict(family) for family in families])
-
+# Get Families Endpoint
 @app.route('/families', methods=['GET'])
 @jwt_required()
 def get_families():
     user = get_jwt_identity()
-    print(f"User: {user}")  # Log user identity
     conn = get_db_connection()
     families = conn.execute('SELECT * FROM families').fetchall()
     conn.close()
