@@ -1,0 +1,6 @@
+*.xslx
+*.txt
+add_admin.py
+aid_app_api.py
+db_creation.py
+db_initial_fill.py
