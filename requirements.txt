@@ -3,4 +3,5 @@ Flask>=2.0
 flask-jwt-extended==4.6.0
 # Flask_JWT_Extended==4.6.0
 Flask_SocketIO==5.4.1
+gunicorn
 # pandas==2.0.3
