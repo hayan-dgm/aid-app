@@ -1,5 +1,6 @@
 # Flask==1.1.2
 Flask>=2.0
+jwt
 flask-jwt-extended==4.6.0
 # Flask_JWT_Extended==4.6.0
 Flask_SocketIO==5.4.1
