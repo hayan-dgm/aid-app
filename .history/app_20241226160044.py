@@ -500,11 +500,11 @@
 
 import logging
 from flask import Flask, request, jsonify
-from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity,decode_token
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from flask_socketio import SocketIO, emit
 import sqlite3
 import datetime
-# import jwt
+import jwt # Import the PyJWT library
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s')
@@ -622,7 +622,7 @@ def get_families():
           # Decode and log the JWT token 
         token = request.headers.get('Authorization').split()[1] 
         print(str(token))
-        decoded_token = decode_token(token)
+        decoded_token = jwt.decode(token, options={"verify_signature": False})
         logger.debug(f"Decoded JWT Token: {decoded_token}")
         print(f"Decoded JWT Token: {decoded_token}")
         conn = get_db_connection()

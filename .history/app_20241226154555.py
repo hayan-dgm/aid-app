@@ -500,11 +500,11 @@
 
 import logging
 from flask import Flask, request, jsonify
-from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity,decode_token
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from flask_socketio import SocketIO, emit
 import sqlite3
 import datetime
-# import jwt
+import jwt # Import the PyJWT library
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s')
@@ -547,50 +547,25 @@ def log_change(family_id, user_id, description):
     conn.commit()
     conn.close()
 
-# @app.route('/login', methods=['POST'])
-# def login():
-#     data = request.json
-#     username = data.get('username')
-#     password = data.get('password')
-#     logger.debug(f'Login attempt for username: {username}')
-#     conn = get_db_connection()
-#     user = conn.execute('SELECT * FROM users WHERE username = ? AND password = ?', (username, password)).fetchone()
-#     conn.close()
-#     if user:
-#         access_token = create_access_token(identity={'id': user['id'], 'username': user['username'], 'isAdmin': user['isAdmin']})
-#         logger.debug(f'Login successful for user: {username}')
-#         return jsonify({'message': 'Login successful', 'access_token': access_token})
-#     else:
-#         logger.warning(f'Invalid login attempt for username: {username}')
-#         return jsonify({'message': 'Invalid credentials'}), 401
-
-
 @app.route('/login', methods=['POST'])
 def login():
-     try: 
-        data = request.json 
-        logger.debug(f"Incoming login data: {data}") 
-        username = data.get('username') 
-        password = data.get('password') 
-        logger.debug(f'Login attempt for username: {username}') 
+    data = request.json
+    username = data.get('username')
+    password = data.get('password')
+    logger.debug(f'Login attempt for username: {username}')
+    conn = get_db_connection()
+    user = conn.execute('SELECT * FROM users WHERE username = ? AND password = ?', (username, password)).fetchone()
+    conn.close()
+    if user:
+        access_token = create_access_token(identity={'id': user['id'], 'username': user['username'], 'isAdmin': user['isAdmin']})
+        logger.debug(f'Login successful for user: {username}')
+        return jsonify({'message': 'Login successful', 'access_token': access_token})
+    else:
+        logger.warning(f'Invalid login attempt for username: {username}')
+        return jsonify({'message': 'Invalid credentials'}), 401
 
-        if not username or not password:
-             logger.error(f'Missing username or password: username={username}, password={password}') 
-             return jsonify({'message': 'Missing username or password'}), 400 
-        
-        conn = get_db_connection() 
-        user = conn.execute('SELECT * FROM users WHERE username = ? AND password = ?', (username, password)).fetchone() 
-        conn.close() 
-        if user: 
-            access_token = create_access_token(identity={'id': user['id'], 'username': user['username'], 'isAdmin': user['isAdmin']}) 
-            logger.debug(f'Login successful for user: {username}') 
-            return jsonify({'message': 'Login successful', 'access_token': access_token}) 
-        else:
-            logger.warning(f'Invalid login attempt for username: {username}')
-            return jsonify({'message': 'Invalid credentials'}), 401 
-     except Exception as e:
-         logger.error(f"Error during login: {e}") 
-         return jsonify({'message': 'An error occurred during login'}), 500
+
+
 
 
 
@@ -621,8 +596,8 @@ def get_families():
         logger.debug(f"Request Headers: {request.headers}")
           # Decode and log the JWT token 
         token = request.headers.get('Authorization').split()[1] 
-        print(str(token))
-        decoded_token = decode_token(token)
+        print(token)
+        decoded_token = jwt.decode(token, options={"verify_signature": False})
         logger.debug(f"Decoded JWT Token: {decoded_token}")
         print(f"Decoded JWT Token: {decoded_token}")
         conn = get_db_connection()

@@ -622,7 +622,7 @@ def get_families():
           # Decode and log the JWT token 
         token = request.headers.get('Authorization').split()[1] 
         print(str(token))
-        decoded_token = decode_token(token)
+        decoded_token = decode_token(token, options={"verify_signature": False})
         logger.debug(f"Decoded JWT Token: {decoded_token}")
         print(f"Decoded JWT Token: {decoded_token}")
         conn = get_db_connection()
