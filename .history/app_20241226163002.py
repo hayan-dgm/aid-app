@@ -622,15 +622,15 @@ def get_families():
           # Decode and log the JWT token 
         token = request.headers.get('Authorization').split()[1] 
         print(str(token))
-        decoded_token = jww.decode(token, options={"verify_signature": False})
+        decoded_token = jww.decode(token, options={"verify_signature": False}) # Use jwt.decode() from PyJWT
         logger.debug(f"Decoded JWT Token: {decoded_token}")
         print(f"Decoded JWT Token: {decoded_token}")
-        conn = get_db_connection()
-        families = conn.execute('SELECT * FROM families').fetchall()
-        conn.close()
-        response = jsonify([dict(family) for family in families])
-        logger.debug(f"Response for /families: {response.get_json()}")
-        return response 
+        # conn = get_db_connection()
+        # families = conn.execute('SELECT * FROM families').fetchall()
+        # conn.close()
+        # response = jsonify([dict(family) for family in families])
+        # logger.debug(f"Response for /families: {response.get_json()}")
+        # return response 
     except Exception as e:
         logger.error(f"Error retrieving families: {e}") 
         return jsonify({"error": "An error occurred while retrieving families"}), 500
