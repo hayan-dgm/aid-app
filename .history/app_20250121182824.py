@@ -34,33 +34,6 @@ def get_db_connection():
 
 
 
-# def token_required(fn):
-#     @wraps(fn)
-#     def wrapper(*args, **kwargs):
-#         verify_jwt_in_request()
-#         jwt_data = get_jwt()
-#         user_id = jwt_data['sub']['id']
-#         login_time = jwt_data['iat']
-        
-#         conn = get_db_connection()
-#         session = conn.execute('SELECT login_time FROM active_sessions WHERE user_id = ?', (user_id,)).fetchone()
-#         conn.close()
-        
-#         if session:
-#             db_login_time = dateutil.parser.parse(session['login_time']) 
-#             if db_login_time.tzinfo is None: 
-#                 db_login_time = db_login_time.replace(tzinfo=timezone.utc) 
-#             token_login_time = datetime.fromtimestamp(login_time, timezone.utc)
-#             logger.debug(f"db_login_time: {db_login_time}, token_login_time: {token_login_time}")
-
-#             tolerance = timedelta(seconds=1)
-#             if db_login_time > token_login_time + tolerance:
-#                 return jsonify({'message': 'Token has been revoked'}), 401
-        
-#         return fn(*args, **kwargs)
-#     return wrapper
-
-
 def token_required(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
@@ -68,31 +41,24 @@ def token_required(fn):
         jwt_data = get_jwt()
         user_id = jwt_data['sub']['id']
         login_time = jwt_data['iat']
-        jti = jwt_data['jti']
-
+        
         conn = get_db_connection()
         session = conn.execute('SELECT login_time FROM active_sessions WHERE user_id = ?', (user_id,)).fetchone()
-        revoked = conn.execute('SELECT * FROM revoked_tokens WHERE jti = ?', (jti,)).fetchone()
         conn.close()
-
-        if revoked:
-            return jsonify({'message': 'Token has been revoked'}), 401
-
+        
         if session:
-            db_login_time = dateutil.parser.parse(session['login_time'])
-            if db_login_time.tzinfo is None:
-                db_login_time = db_login_time.replace(tzinfo=timezone.utc)
+            db_login_time = dateutil.parser.parse(session['login_time']) 
+            if db_login_time.tzinfo is None: 
+                db_login_time = db_login_time.replace(tzinfo=timezone.utc) 
             token_login_time = datetime.fromtimestamp(login_time, timezone.utc)
-
             logger.debug(f"db_login_time: {db_login_time}, token_login_time: {token_login_time}")
 
             tolerance = timedelta(seconds=1)
             if db_login_time > token_login_time + tolerance:
                 return jsonify({'message': 'Token has been revoked'}), 401
-
+        
         return fn(*args, **kwargs)
     return wrapper
-
 
 # Root route
 @app.route('/', methods=['GET'])
@@ -160,30 +126,16 @@ def login():
         return jsonify({'message': 'An error occurred during login'}), 500
 
 
-# @app.route('/logout', methods=['POST'])
-# @token_required
-# def logout():
-#     user = get_jwt_identity()
-#     conn = get_db_connection()
-#     conn.execute('DELETE FROM active_sessions WHERE user_id = ?', (user['id'],))
-#     conn.commit()
-#     conn.close()
-#     return jsonify({'message': 'Logged out successfully'})
-
 @app.route('/logout', methods=['POST'])
 @token_required
 def logout():
     user = get_jwt_identity()
-    jwt_data = get_jwt()
-    jti = jwt_data['jti']  # JWT ID
-
     conn = get_db_connection()
     conn.execute('DELETE FROM active_sessions WHERE user_id = ?', (user['id'],))
-    conn.execute('INSERT INTO revoked_tokens (jti) VALUES (?)', (jti,))
     conn.commit()
     conn.close()
-
     return jsonify({'message': 'Logged out successfully'})
+
 
 @app.route('/active_sessions', methods=['GET'])
 # @token_required

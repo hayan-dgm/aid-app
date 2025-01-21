@@ -48,17 +48,6 @@ CREATE TABLE IF NOT EXISTS logs (
 )
 ''')
 
-# Create Active Sessions Table
-cursor.execute('''
-CREATE TABLE IF NOT EXISTS active_sessions (
-    user_id INTEGER PRIMARY KEY,
-    access_token TEXT,
-    login_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(user_id) REFERENCES users(id)
-)
-''')
-
-
 # Commit changes and close the connection
 conn.commit()
 conn.close()
