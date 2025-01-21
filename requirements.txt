@@ -5,5 +5,7 @@ flask-jwt-extended==4.7.1
 # Flask_JWT_Extended==4.6.0
 Flask_SocketIO==5.4.1
 gunicorn
+# functools
+python-dateutil
 gevent==24.11.1
 # pandas==2.0.3
