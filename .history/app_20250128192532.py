@@ -17,24 +17,24 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') 
 app.config['JWT_ALGORITHM'] = 'HS256'  # Ensure the algorithm matches your token's algorithm
-app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY')
+# app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY')
 app.config['JWT_VERIFY_SUB'] = False # Add this line to disable `sub` claim verification
-# app.config['JWT_SECRET_KEY'] = '57a6a39a94d76c5cbbdec50f2a6ec31ba17b318f695d39750ee133a078fd128d'  # Change this to a random secret key
+app.config['JWT_SECRET_KEY'] = '57a6a39a94d76c5cbbdec50f2a6ec31ba17b318f695d39750ee133a078fd128d'  # Change this to a random secret key
 jwt = JWTManager(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Database connection function
 def get_db_connection():
     # db_path = os.path.join(os.getenv('PERSISTENT_DISK_PATH', '/data'), 'aid_app.db')
-    db_url = os.getenv('DATABASE_URL')
-    conn = sqlitecloud.connect(db_url)
-    if db_url.startswith("sqlite:///"):
-        db_path=db_url[10:]
-        conn = sqlite3.connect(db_path)
-    else:
-        raise ValueError("Invalid DATABASE_URL format")
+    # db_url = os.getenv('DATABASE_URL')
+    # conn = sqlitecloud.connect(db_url)
+    # if db_url.startswith("sqlite:///"):
+    #     db_path=db_url[10:]
+    #     conn = sqlite3.connect(db_path)
+    # else:
+    #     raise ValueError("Invalid DATABASE_URL format")
     # # conn.row_factory = sqlite3.Row
-    # conn = sqlite3.connect('aid_app.db')
+    conn = sqlite3.connect('aid_app.db')
     # conn = sqlite3.connect(db_url)
     # conn.row_factory = sqlite3.Row
     return conn
@@ -287,10 +287,6 @@ def clear_active_sessions():
         return jsonify({"error": "An error occurred while clearing active sessions"}), 500
 
 
-def map_columns_to_dict(columns, row):
-    return {columns[idx]: value for idx, value in enumerate(row)}
-
-
 @app.route('/families', methods=['GET'])
 @token_required
 def get_families():
@@ -309,8 +305,8 @@ def get_families():
         offset = (page - 1) * per_page
 
         # Fetch families with pagination
-        cursor = conn.execute('SELECT * FROM families LIMIT ? OFFSET ?', (per_page, offset))
-        families = cursor.fetchall()
+        cursor = conn.execute('SELECT * FROM families LIMIT ? OFFSET ?', (per_page, offset)).fetchall()
+        families = cursor
         column_names = [description[0] for description in cursor.description]
         conn.close()
 
@@ -318,9 +314,23 @@ def get_families():
         conn = get_db_connection()
         total_families = conn.execute('SELECT COUNT(*) FROM families').fetchone()[0]
         conn.close()
-        families_list = [map_columns_to_dict(column_names, family) for family in families]
+
         # # Convert each family row to a dictionary
-    
+        # families_list = [
+        #     {key: family[idx] for idx, key in enumerate(family.keys())}
+        #     for family in families
+        # ]
+
+                # Convert each family row to a dictionary
+       
+        families_list = []
+        families_list = [
+        dict(zip(column_names, family))
+        for family in families]   
+
+        # for family in families:
+        #     family_dict = {desc[0]: value for desc, value in zip(family.description, family)}
+        #     families_list.append(family_dict)
         response = {
             'page': page,
             'per_page': per_page,

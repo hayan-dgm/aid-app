@@ -16,25 +16,24 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') 
-app.config['JWT_ALGORITHM'] = 'HS256'  # Ensure the algorithm matches your token's algorithm
-app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY')
+# app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY')
 app.config['JWT_VERIFY_SUB'] = False # Add this line to disable `sub` claim verification
-# app.config['JWT_SECRET_KEY'] = '57a6a39a94d76c5cbbdec50f2a6ec31ba17b318f695d39750ee133a078fd128d'  # Change this to a random secret key
+app.config['JWT_SECRET_KEY'] = '57a6a39a94d76c5cbbdec50f2a6ec31ba17b318f695d39750ee133a078fd128d'  # Change this to a random secret key
 jwt = JWTManager(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Database connection function
 def get_db_connection():
     # db_path = os.path.join(os.getenv('PERSISTENT_DISK_PATH', '/data'), 'aid_app.db')
-    db_url = os.getenv('DATABASE_URL')
-    conn = sqlitecloud.connect(db_url)
-    if db_url.startswith("sqlite:///"):
-        db_path=db_url[10:]
-        conn = sqlite3.connect(db_path)
-    else:
-        raise ValueError("Invalid DATABASE_URL format")
+    # db_url = os.getenv('DATABASE_URL')
+    # conn = sqlitecloud.connect(db_url)
+    # if db_url.startswith("sqlite:///"):
+    #     db_path=db_url[10:]
+    #     conn = sqlite3.connect(db_path)
+    # else:
+    #     raise ValueError("Invalid DATABASE_URL format")
     # # conn.row_factory = sqlite3.Row
-    # conn = sqlite3.connect('aid_app.db')
+    conn = sqlite3.connect('aid_app.db')
     # conn = sqlite3.connect(db_url)
     # conn.row_factory = sqlite3.Row
     return conn
@@ -70,90 +69,38 @@ def get_db_connection():
 #     return wrapper
 
 
-# def token_required(fn):
-#     @wraps(fn)
-#     def wrapper(*args, **kwargs):
-#         verify_jwt_in_request()
-#         jwt_data = get_jwt()
-#         user_id = jwt_data['sub']['id']
-#         login_time = jwt_data['iat']
-#         jti = jwt_data['jti']
-
-#         conn = get_db_connection()
-#         session = conn.execute('SELECT login_time FROM active_sessions WHERE user_id = ?', (user_id,)).fetchone()
-#         revoked = conn.execute('SELECT * FROM revoked_tokens WHERE jti = ?', (jti,)).fetchone()
-#         conn.close()
-
-#         if revoked:
-#             return jsonify({'message': 'Token has been revoked'}), 401
-
-#         if session:
-#             try:
-#                 db_login_time = dateutil.parser.parse('login_time')
-#             except (IndexError, KeyError, TypeError) as e:
-#                 logger.error(f"Error parsing login time from session: {e}", exc_info=True)
-#                 return jsonify({'message': 'Error parsing session data'}), 500
-
-#             # db_login_time = dateutil.parser.parse(session[0])
-#             # if isinstance(session, sqlitecloud.Row):
-#             # db_login_time = dateutil.parser.parse(session['login_time'])
-#             # else:
-#             #     db_login_time = dateutil.parser.parse(session[0])  # Access tuple element with index
-
-#             if db_login_time.tzinfo is None:
-#                 db_login_time = db_login_time.replace(tzinfo=timezone.utc)
-#             token_login_time = datetime.fromtimestamp(login_time, timezone.utc)
-
-#             logger.debug(f"db_login_time: {db_login_time}, token_login_time: {token_login_time}")
-
-#             tolerance = timedelta(seconds=1)
-#             if db_login_time > token_login_time + tolerance:
-#                 return jsonify({'message': 'Token has been revoked'}), 401
-
-#         return fn(*args, **kwargs)
-#     return wrapper
-
 def token_required(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
-        try:
-            verify_jwt_in_request()
-            jwt_data = get_jwt()
-        except Exception as e:
-            logger.error(f"Error verifying JWT: {e}", exc_info=True)
-            return jsonify({"msg": "Invalid JWT"}), 401
+        verify_jwt_in_request()
+        jwt_data = get_jwt()
+        user_id = jwt_data['sub']['id']
+        login_time = jwt_data['iat']
+        jti = jwt_data['jti']
 
-        try:
-            user_id = jwt_data['sub']['id']
-            login_time = jwt_data['iat']
-            jti = jwt_data['jti']
+        conn = get_db_connection()
+        session = conn.execute('SELECT login_time FROM active_sessions WHERE user_id = ?', (user_id,)).fetchone()
+        revoked = conn.execute('SELECT * FROM revoked_tokens WHERE jti = ?', (jti,)).fetchone()
+        conn.close()
 
-            conn = get_db_connection()
-            session = conn.execute('SELECT login_time FROM active_sessions WHERE user_id = ?', (user_id,)).fetchone()
-            revoked = conn.execute('SELECT * FROM revoked_tokens WHERE jti = ?', (jti,)).fetchone()
-            conn.close()
+        if revoked:
+            return jsonify({'message': 'Token has been revoked'}), 401
 
-            if revoked:
+        if session:
+            db_login_time = dateutil.parser.parse(session['login_time'])
+            if db_login_time.tzinfo is None:
+                db_login_time = db_login_time.replace(tzinfo=timezone.utc)
+            token_login_time = datetime.fromtimestamp(login_time, timezone.utc)
+
+            logger.debug(f"db_login_time: {db_login_time}, token_login_time: {token_login_time}")
+
+            tolerance = timedelta(seconds=1)
+            if db_login_time > token_login_time + tolerance:
                 return jsonify({'message': 'Token has been revoked'}), 401
 
-            if session:
-                db_login_time = dateutil.parser.parse(session[0])
-
-                if db_login_time.tzinfo is None:
-                    db_login_time = db_login_time.replace(tzinfo=timezone.utc)
-                token_login_time = datetime.fromtimestamp(login_time, timezone.utc)
-
-                logger.debug(f"db_login_time: {db_login_time}, token_login_time: {token_login_time}")
-
-                tolerance = timedelta(seconds=1)
-                if db_login_time > token_login_time + tolerance:
-                    return jsonify({'message': 'Token has been revoked'}), 401
-
-            return fn(*args, **kwargs)
-        except Exception as e:
-            logger.error(f"Error processing token: {e}", exc_info=True)
-            return jsonify({"msg": "Error processing token"}), 500
+        return fn(*args, **kwargs)
     return wrapper
+
 
 # Root route
 @app.route('/', methods=['GET'])
@@ -201,9 +148,7 @@ def login():
         if user:
             # user_dict = {key: user[key] for key in user.keys()}
             # user_dict = dict(user)  # Add this line to convert the row to a dictionary
-
-            print(user)
-            access_token = create_access_token(identity={'id': user[0], 'username': user[1], 'isAdmin': user[3]})
+            access_token = create_access_token(identity={'id': user[0], 'username': user[1], 'isAdmin': user[2]})
             login_time = datetime.now(timezone.utc) # Use datetime.now(timezone.utc)
             conn = get_db_connection()
             existing_session = conn.execute('SELECT * FROM active_sessions WHERE user_id = ?', (user[0],)).fetchone()
@@ -287,53 +232,50 @@ def clear_active_sessions():
         return jsonify({"error": "An error occurred while clearing active sessions"}), 500
 
 
-def map_columns_to_dict(columns, row):
-    return {columns[idx]: value for idx, value in enumerate(row)}
-
-
 @app.route('/families', methods=['GET'])
 @token_required
 def get_families():
-    user = get_jwt_identity()
-    print(user)
-    logger.debug(f"User: {user} requested /families")
+    # user = get_jwt_identity()
+    print("user")
+    # logger.debug(f"User: {user} requested /families")
     
-    # Get query parameters
-    page = request.args.get('page', default=1, type=int)
-    per_page = request.args.get('per_page', default=10, type=int)
+    # # Get query parameters
+    # page = request.args.get('page', default=1, type=int)
+    # per_page = request.args.get('per_page', default=10, type=int)
     
-    try:
-        conn = get_db_connection()
+    # try:
+    #     conn = get_db_connection()
         
-        # Calculate offset
-        offset = (page - 1) * per_page
+    #     # Calculate offset
+    #     offset = (page - 1) * per_page
 
-        # Fetch families with pagination
-        cursor = conn.execute('SELECT * FROM families LIMIT ? OFFSET ?', (per_page, offset))
-        families = cursor.fetchall()
-        column_names = [description[0] for description in cursor.description]
-        conn.close()
+    #     # Fetch families with pagination
+    #     families = conn.execute('SELECT * FROM families LIMIT ? OFFSET ?', (per_page, offset)).fetchall()
+    #     conn.close()
 
-        # Fetch total count of families
-        conn = get_db_connection()
-        total_families = conn.execute('SELECT COUNT(*) FROM families').fetchone()[0]
-        conn.close()
-        families_list = [map_columns_to_dict(column_names, family) for family in families]
-        # # Convert each family row to a dictionary
-    
-        response = {
-            'page': page,
-            'per_page': per_page,
-            'total': total_families,
-            # 'families': [dict(family) for family in families]
-            'families': families_list
-        }
+    #     # Fetch total count of families
+    #     conn = get_db_connection()
+    #     total_families = conn.execute('SELECT COUNT(*) FROM families').fetchone()[0]
+    #     conn.close()
 
-        logger.debug(f"Response for /families: {response}")
-        return jsonify(response)
-    except Exception as e:
-        logger.error(f"Error retrieving families: {e}")
-        return jsonify({"error": "An error occurred while retrieving families"}), 500
+    #     # Convert each family row to a dictionary
+    #     families_list = [
+    #         {key: family[idx] for idx, key in enumerate(family.keys())}
+    #         for family in families
+    #     ]
+    #     response = {
+    #         'page': page,
+    #         'per_page': per_page,
+    #         'total': total_families,
+    #         # 'families': [dict(family) for family in families]
+    #         'families': families_list
+    #     }
+
+    #     logger.debug(f"Response for /families: {response}")
+    #     return jsonify(response)
+    # except Exception as e:
+    #     logger.error(f"Error retrieving families: {e}")
+    #     return jsonify({"error": "An error occurred while retrieving families"}), 500
 
 
 @app.route('/families/<int:id>', methods=['GET'])
