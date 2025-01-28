@@ -26,16 +26,15 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 def get_db_connection():
     # db_path = os.path.join(os.getenv('PERSISTENT_DISK_PATH', '/data'), 'aid_app.db')
     db_url = os.getenv('DATABASE_URL')
-    conn = sqlitecloud.connect(db_url)
-    # if db_url.startswith("sqlite:///"):
-    #     db_path=db_url[10:]
-    #     conn = sqlite3.connect(db_path)
-    # else:
-    #     raise ValueError("Invalid DATABASE_URL format")
-    # # conn.row_factory = sqlite3.Row
-    # # conn = sqlite3.connect('aid_app.db')
-    # # conn = sqlite3.connect(db_url)
+    if db_url.startswith("sqlite:///"):
+        db_path=db_url[10:]
+        conn = sqlite3.connect(db_path)
+    else:
+        raise ValueError("Invalid DATABASE_URL format")
     # conn.row_factory = sqlite3.Row
+    # conn = sqlite3.connect('aid_app.db')
+    # conn = sqlite3.connect(db_url)
+    conn.row_factory = sqlite3.Row
     return conn
 
 
