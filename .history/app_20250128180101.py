@@ -146,17 +146,17 @@ def login():
         conn.close()
         
         if user:
-            # user_dict = {key: user[key] for key in user.keys()}
+            user_dict = {key: user[key] for key in user.keys()}
             # user_dict = dict(user)  # Add this line to convert the row to a dictionary
-            access_token = create_access_token(identity={'id': user[0], 'username': user['username'], 'isAdmin': user['isAdmin']})
+            access_token = create_access_token(identity={'id': user_dict[0], 'username': user['username'], 'isAdmin': user['isAdmin']})
             login_time = datetime.now(timezone.utc) # Use datetime.now(timezone.utc)
             conn = get_db_connection()
-            existing_session = conn.execute('SELECT * FROM active_sessions WHERE user_id = ?', (user[0],)).fetchone()
+            existing_session = conn.execute('SELECT * FROM active_sessions WHERE user_id = ?', (user_dict[0],)).fetchone()
             
             if existing_session:
-                conn.execute('DELETE FROM active_sessions WHERE user_id = ?', (user[0],))
+                conn.execute('DELETE FROM active_sessions WHERE user_id = ?', (user_dict[0],))
             
-            conn.execute('INSERT INTO active_sessions (user_id, access_token, login_time) VALUES (?, ?, ?)', (user[0], access_token, login_time))
+            conn.execute('INSERT INTO active_sessions (user_id, access_token, login_time) VALUES (?, ?, ?)', (user_dict[0], access_token, login_time))
             conn.commit()
             conn.close()
             
