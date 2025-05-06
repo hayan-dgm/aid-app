@@ -28,16 +28,16 @@ def get_db_connection():
     # db_path = os.path.join(os.getenv('PERSISTENT_DISK_PATH', '/data'), 'aid_app.db')
     db_url = os.getenv('DATABASE_URL')
 
-    conn = sqlitecloud.connect(db_url)
+    # conn = sqlitecloud.connect(db_url)
     # if db_url.startswith("sqlite:///"):
     #     db_path=db_url[10:]
     #     conn = sqlite3.connect(db_path)
     # else:
     #     raise ValueError("Invalid DATABASE_URL format")
-    # # conn.row_factory = sqlite3.Row
-    # conn = sqlite3.connect('aid_app.db')
-    # conn = sqlite3.connect(db_url)
     # conn.row_factory = sqlite3.Row
+    # conn = sqlite3.connect('aid_app.db')
+    conn = sqlite3.connect(db_url)
+    conn.row_factory = sqlite3.Row
     return conn
 
 
@@ -174,7 +174,8 @@ def handle_disconnect():
 # Helper function to log changes
 def log_change(family_id, user_id, description):
     conn = get_db_connection()
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     conn.execute('''
         INSERT INTO logs (familyID, userID, changeDescription, timestamp)
         VALUES (?, ?, ?, ?)
@@ -382,9 +383,10 @@ def update_products(id):
             WHERE id = ?
         ''', (milk, diapers, basket, clothing, drugs, other, taken, id))
         conn.commit()
-
         user_info = conn.execute('SELECT username FROM users WHERE id = ?', (user['id'],)).fetchone()
-        username = user_info['username'] if user_info else 'Unknown'
+        username = user_info[0] if user_info else 'Unknown'  # Access by index instead of name
+        # user_info = conn.execute('SELECT username FROM users WHERE id = ?', (user['id'],)).fetchone()
+        # username = user_info['username'] if user_info else 'Unknown'
         conn.close()
 
         change_description = f'User {username} (ID: {user["id"]}) updated family {id}'
