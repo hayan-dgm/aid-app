@@ -413,124 +413,71 @@ def get_single_family(id):
         if 'conn' in locals():
             conn.close()
 
-
-
+# Update Products Endpoint
 @app.route('/families/<int:id>/products', methods=['PUT'])
 @token_required
 def update_products(id):
     user = get_jwt_identity()
+    logger.debug(f"User: {user} requested update on family {id}")
     if not user:
+        logger.warning('Unauthorized access attempt')
         return jsonify({'message': 'Unauthorized'}), 401
 
     try:
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "No data provided"}), 400
+        data = request.json
+        milk = data.get('milk')
+        diapers = data.get('diapers')
+        basket = data.get('basket')
+        clothing = data.get('clothing')
+        drugs = data.get('drugs')
+        other = data.get('other')
+        taken = data.get('taken')
 
         conn = get_db_connection()
-        conn.row_factory = sqlite3.Row
-        
-        # Get current values first for comparison
-        current = conn.execute('SELECT * FROM families WHERE id = ?', (id,)).fetchone()
-        
-        # Execute update
         conn.execute('''
-            UPDATE families SET 
-                milk = COALESCE(?, milk),
-                diapers = COALESCE(?, diapers),
-                basket = COALESCE(?, basket),
-                clothing = COALESCE(?, clothing),
-                drugs = COALESCE(?, drugs),
-                other = COALESCE(?, other),
-                taken = COALESCE(?, taken)
+            UPDATE families SET milk = ?, diapers = ?, basket = ?, clothing = ?, drugs = ?, other = ?, taken = ?
             WHERE id = ?
-        ''', (
-            data.get('milk'),
-            data.get('diapers'),
-            data.get('basket'),
-            data.get('clothing'),
-            data.get('drugs'),
-            data.get('other'),
-            data.get('taken'),
-            id
-        ))
+        ''', (milk, diapers, basket, clothing, drugs, other, taken, id))
         conn.commit()
-
-        # Get updated values
-        updated = conn.execute('SELECT * FROM families WHERE id = ?', (id,)).fetchone()
         user_info = conn.execute('SELECT username FROM users WHERE id = ?', (user['id'],)).fetchone()
-        username = user_info[0] if user_info else 'Unknown'
+        username = user_info[0] if user_info else 'Unknown'  # Access by index instead of name
+        # user_info = conn.execute('SELECT username FROM users WHERE id = ?', (user['id'],)).fetchone()
+        # username = user_info['username'] if user_info else 'Unknown'
         conn.close()
 
-        # Prepare changes dictionary
-        changes = {
-            field: updated[field]
-            for field in ['milk', 'diapers', 'basket', 'clothing', 'drugs', 'other', 'taken']
-            if current[field] != updated[field]
-        }
-
-        if changes:  # Only emit if actual changes occurred
-            socketio.emit(
-                'family_updated',
-                {
-                    'family_id': id,
-                    'changes': changes,
-                    'updated_by': user['id'],
-                    'timestamp': datetime.now().isoformat()
+        change_description = f'User {username} (ID: {user["id"]}) updated family {id}'
+        log_change(id, user['id'], change_description)
+        logger.debug(f"Emitting update: {change_description}")
+        # socketio.emit('update_family', {'family_id': id, 'user_id': user['id'], 'username': username, 'change_description': change_description})
+        # Replace the current socketio.emit() call with this:
+        socketio.emit(
+            'family_updated',  # Consistent event name
+            {
+                'family_id': id,
+                'changes': {  # Include all changed fields
+                    'milk': milk,
+                    'diapers': diapers,
+                    'basket': basket,
+                    'clothing': clothing,
+                    'drugs': drugs,
+                    'other': other,
+                    'taken': taken
                 },
-                namespace='/families',
-                room=f'family_{id}'
-            )
+                'updated_by': {
+                    'user_id': user['id'],
+                    'username': username
+                },
+                'timestamp': datetime.now().isoformat()
+            },
+            namespace='/families',  # Add namespace
+            room=f'family_{id}',  # Target specific room
+            callback=lambda: logger.debug(f"Confirmed delivery to family {id}")
+        )
 
-        return jsonify({'message': 'Products updated successfully'})
-
-    except sqlite3.Error as e:
-        logger.error(f"Database error on family {id}: {str(e)}")
-        return jsonify({"error": "Database operation failed"}), 500
+        return jsonify({'message': 'Product updated successfully'})
     except Exception as e:
-        logger.error(f"Unexpected error on family {id}: {str(e)}")
-        return jsonify({"error": "Internal server error"}), 500
-# # Update Products Endpoint
-# @app.route('/families/<int:id>/products', methods=['PUT'])
-# @token_required
-# def update_products(id):
-#     user = get_jwt_identity()
-#     logger.debug(f"User: {user} requested update on family {id}")
-#     if not user:
-#         logger.warning('Unauthorized access attempt')
-#         return jsonify({'message': 'Unauthorized'}), 401
-
-#     try:
-#         data = request.json
-#         milk = data.get('milk')
-#         diapers = data.get('diapers')
-#         basket = data.get('basket')
-#         clothing = data.get('clothing')
-#         drugs = data.get('drugs')
-#         other = data.get('other')
-#         taken = data.get('taken')
-
-#         conn = get_db_connection()
-#         conn.execute('''
-#             UPDATE families SET milk = ?, diapers = ?, basket = ?, clothing = ?, drugs = ?, other = ?, taken = ?
-#             WHERE id = ?
-#         ''', (milk, diapers, basket, clothing, drugs, other, taken, id))
-#         conn.commit()
-#         user_info = conn.execute('SELECT username FROM users WHERE id = ?', (user['id'],)).fetchone()
-#         username = user_info[0] if user_info else 'Unknown'  # Access by index instead of name
-#         # user_info = conn.execute('SELECT username FROM users WHERE id = ?', (user['id'],)).fetchone()
-#         # username = user_info['username'] if user_info else 'Unknown'
-#         conn.close()
-
-#         change_description = f'User {username} (ID: {user["id"]}) updated family {id}'
-#         log_change(id, user['id'], change_description)
-#         logger.debug(f"Emitting update: {change_description}")
-#         # socketio.emit('update_family', {'family_id': id, 'user_id': user['id'], 'username': username, 'change_description': change_description})
-#         socketio.emit('update_family', {'family_id': id, 'user_id': user['id'], 'username': username, 'change_description': change_description})
-#         return jsonify({'message': 'Product updated successfully'})
-#     except Exception as e:
-#         logger.error(f"Error updating products for family {id}: {e}")
-#         return jsonify({"error": "An error occurred while updating products"}), 500
+        logger.error(f"Error updating products for family {id}: {e}")
+        return jsonify({"error": "An error occurred while updating products"}), 500
 
 # Error handler to catch all exceptions and log them
 @app.errorhandler(Exception)
