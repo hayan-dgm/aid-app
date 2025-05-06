@@ -22,7 +22,7 @@ app.config['JWT_VERIFY_SUB'] = False # Add this line to disable `sub` claim veri
 
 
 # change
-# app.config['JWT_SECRET_KEY'] = '57a6a39a94d76c5cbbdec50f2a6ec31ba17b318f695d39750ee133a078fd128d'  # Change this to a random secret key
+app.config['JWT_SECRET_KEY'] = '57a6a39a94d76c5cbbdec50f2a6ec31ba17b318f695d39750ee133a078fd128d'  # Change this to a random secret key
 
 
 
@@ -34,8 +34,8 @@ def get_db_connection():
     # db_path = os.path.join(os.getenv('PERSISTENT_DISK_PATH', '/data'), 'aid_app.db')
     
     # change
-    db_url = os.getenv('DATABASE_URL')
-    conn = sqlitecloud.connect(db_url)
+    # db_url = os.getenv('DATABASE_URL')
+    # conn = sqlitecloud.connect(db_url)
     
     
     # if db_url.startswith("sqlite:///"):
@@ -47,15 +47,15 @@ def get_db_connection():
 
 
     # change
-    # conn = sqlite3.connect('aid_app.db') 
+    conn = sqlite3.connect('aid_app.db') 
 
 
-
+    
     # conn = sqlite3.connect(db_url)
 
 
     # change
-    # conn.row_factory = sqlite3.Row
+    conn.row_factory = sqlite3.Row
     return conn
 
 

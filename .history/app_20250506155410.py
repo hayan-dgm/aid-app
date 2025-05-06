@@ -19,42 +19,24 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
 app.config['JWT_ALGORITHM'] = 'HS256'  # Ensure the algorithm matches your token's algorithm
 app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY')
 app.config['JWT_VERIFY_SUB'] = False # Add this line to disable `sub` claim verification
-
-
-# change
 # app.config['JWT_SECRET_KEY'] = '57a6a39a94d76c5cbbdec50f2a6ec31ba17b318f695d39750ee133a078fd128d'  # Change this to a random secret key
-
-
-
 jwt = JWTManager(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Database connection function
 def get_db_connection():
     # db_path = os.path.join(os.getenv('PERSISTENT_DISK_PATH', '/data'), 'aid_app.db')
-    
-    # change
     db_url = os.getenv('DATABASE_URL')
+
     conn = sqlitecloud.connect(db_url)
-    
-    
     # if db_url.startswith("sqlite:///"):
     #     db_path=db_url[10:]
     #     conn = sqlite3.connect(db_path)
     # else:
     #     raise ValueError("Invalid DATABASE_URL format")
     # conn.row_factory = sqlite3.Row
-
-
-    # change
-    # conn = sqlite3.connect('aid_app.db') 
-
-
-
+    # conn = sqlite3.connect('aid_app.db')
     # conn = sqlite3.connect(db_url)
-
-
-    # change
     # conn.row_factory = sqlite3.Row
     return conn
 
@@ -366,7 +348,7 @@ def get_single_family(id):
         conn.row_factory = sqlite3.Row
         family = conn.execute('SELECT * FROM families WHERE id = ?', (id,)).fetchone()
         conn.close()
-
+        
         if family is None:
             logger.warning(f"Family with id {id} not found")
             return jsonify({"message": "Family not found"}), 404
