@@ -597,12 +597,12 @@ def add_family():
         ))
         
         family_id = cursor.lastrowid
-        print(user)
+        
         # Log the action
         cursor.execute('''
             INSERT INTO logs (familyID, userID, changeDescription, timestamp)
             VALUES (?, ?, ?, ?)
-        ''', (family_id, user['id'], 'Family created', datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+        ''', (family_id, user[0], 'Family created', datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
         
         conn.commit()
         return jsonify({

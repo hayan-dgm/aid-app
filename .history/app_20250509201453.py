@@ -24,7 +24,7 @@ app.config['JWT_VERIFY_SUB'] = False # Add this line to disable `sub` claim veri
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)  # 1 hour expiration
 
 # change
-app.config['JWT_SECRET_KEY'] = '57a6a39a94d76c5cbbdec50f2a6ec31ba17b318f695d39750ee133a078fd128d'  # Change this to a random secret key
+# app.config['JWT_SECRET_KEY'] = '57a6a39a94d76c5cbbdec50f2a6ec31ba17b318f695d39750ee133a078fd128d'  # Change this to a random secret key
 
 
 
@@ -36,8 +36,8 @@ def get_db_connection():
     # db_path = os.path.join(os.getenv('PERSISTENT_DISK_PATH', '/data'), 'aid_app.db')
     
     # change
-    # db_url = os.getenv('DATABASE_URL')
-    # conn = sqlitecloud.connect(db_url)
+    db_url = os.getenv('DATABASE_URL')
+    conn = sqlitecloud.connect(db_url)
     
     
     # if db_url.startswith("sqlite:///"):
@@ -49,7 +49,7 @@ def get_db_connection():
 
 
     # change
-    conn = sqlite3.connect('aid_app.db') 
+    # conn = sqlite3.connect('aid_app.db') 
 
 
 
@@ -57,7 +57,7 @@ def get_db_connection():
 
 
     # change
-    conn.row_factory = sqlite3.Row
+    # conn.row_factory = sqlite3.Row
     return conn
 
 
@@ -522,101 +522,6 @@ def update_products(id):
                 conn.close()
             except Exception as e:
                 logger.error(f"Error closing connection: {str(e)}")
-
-
-# ADD FAMILY
-@app.route('/families', methods=['POST'])
-@token_required
-def add_family():
-    user = get_jwt_identity()
-
-    if not user.get('isAdmin', False):
-        return jsonify({'error': 'Admin access required'}), 403
-    
-    required_fields = {
-        'fullName': str,
-        'nationalID': str,
-        'familyBookID': str,
-        'phoneNumber': str,
-        'familyMembers': int,
-        'children': int,
-        'babies': int,
-        'adults': int
-    }
-    
-    data = request.get_json()
-    
-    # Validate required fields
-    for field, field_type in required_fields.items():
-        if field not in data:
-            return jsonify({'error': f'Missing required field: {field}'}), 400
-        if not isinstance(data[field], field_type):
-            return jsonify({'error': f'Invalid type for {field}, expected {field_type.__name__}'}), 400
-    
-    # Set default values for optional fields
-    optional_fields = {
-        'milk': 0,
-        'diapers': 0,
-        'basket': 0,
-        'clothing': 0,
-        'drugs': 0,
-        'other': '',
-        'taken': False
-    }
-    
-    for field, default in optional_fields.items():
-        if field not in data:
-            data[field] = default
-    
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            INSERT INTO families (
-                fullName, nationalID, familyBookID, phoneNumber,
-                familyMembers, children, babies, adults,
-                milk, diapers, basket, clothing, drugs, other, taken
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            data['fullName'],
-            data['nationalID'],
-            data['familyBookID'],
-            data['phoneNumber'],
-            data['familyMembers'],
-            data['children'],
-            data['babies'],
-            data['adults'],
-            data['milk'],
-            data['diapers'],
-            data['basket'],
-            data['clothing'],
-            data['drugs'],
-            data['other'],
-            data['taken']
-        ))
-        
-        family_id = cursor.lastrowid
-        print(user)
-        # Log the action
-        cursor.execute('''
-            INSERT INTO logs (familyID, userID, changeDescription, timestamp)
-            VALUES (?, ?, ?, ?)
-        ''', (family_id, user['id'], 'Family created', datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
-        
-        conn.commit()
-        return jsonify({
-            'message': 'Family added successfully',
-            'familyId': family_id
-        }), 201
-        
-    except sqlite3.Error as e:
-        conn.rollback()
-        return jsonify({'error': 'Database error', 'details': str(e)}), 500
-    finally:
-        if conn:
-            conn.close()
-
 
 # # Update Products Endpoint
 # @app.route('/families/<int:id>/products', methods=['PUT'])

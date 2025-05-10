@@ -21,10 +21,10 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
 app.config['JWT_ALGORITHM'] = 'HS256'  # Ensure the algorithm matches your token's algorithm
 app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY')
 app.config['JWT_VERIFY_SUB'] = False # Add this line to disable `sub` claim verification
-app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)  # 1 hour expiration
+
 
 # change
-app.config['JWT_SECRET_KEY'] = '57a6a39a94d76c5cbbdec50f2a6ec31ba17b318f695d39750ee133a078fd128d'  # Change this to a random secret key
+# app.config['JWT_SECRET_KEY'] = '57a6a39a94d76c5cbbdec50f2a6ec31ba17b318f695d39750ee133a078fd128d'  # Change this to a random secret key
 
 
 
@@ -36,103 +36,15 @@ def get_db_connection():
     # db_path = os.path.join(os.getenv('PERSISTENT_DISK_PATH', '/data'), 'aid_app.db')
     
     # change
-    # db_url = os.getenv('DATABASE_URL')
-    # conn = sqlitecloud.connect(db_url)
+    db_url = os.getenv('DATABASE_URL')
+    conn = sqlitecloud.connect(db_url)
     
-    
-    # if db_url.startswith("sqlite:///"):
-    #     db_path=db_url[10:]
-    #     conn = sqlite3.connect(db_path)
-    # else:
-    #     raise ValueError("Invalid DATABASE_URL format")
-    # conn.row_factory = sqlite3.Row
-
-
-    # change
-    conn = sqlite3.connect('aid_app.db') 
-
-
-
-    # conn = sqlite3.connect(db_url)
-
-
-    # change
-    conn.row_factory = sqlite3.Row
     return conn
 
 
 
 
 
-# def token_required(fn):
-#     @wraps(fn)
-#     def wrapper(*args, **kwargs):
-#         verify_jwt_in_request()
-#         jwt_data = get_jwt()
-#         user_id = jwt_data['sub']['id']
-#         login_time = jwt_data['iat']
-        
-#         conn = get_db_connection()
-#         session = conn.execute('SELECT login_time FROM active_sessions WHERE user_id = ?', (user_id,)).fetchone()
-#         conn.close()
-        
-#         if session:
-#             db_login_time = dateutil.parser.parse(session['login_time']) 
-#             if db_login_time.tzinfo is None: 
-#                 db_login_time = db_login_time.replace(tzinfo=timezone.utc) 
-#             token_login_time = datetime.fromtimestamp(login_time, timezone.utc)
-#             logger.debug(f"db_login_time: {db_login_time}, token_login_time: {token_login_time}")
-
-#             tolerance = timedelta(seconds=1)
-#             if db_login_time > token_login_time + tolerance:
-#                 return jsonify({'message': 'Token has been revoked'}), 401
-        
-#         return fn(*args, **kwargs)
-#     return wrapper
-
-
-# def token_required(fn):
-#     @wraps(fn)
-#     def wrapper(*args, **kwargs):
-#         verify_jwt_in_request()
-#         jwt_data = get_jwt()
-#         user_id = jwt_data['sub']['id']
-#         login_time = jwt_data['iat']
-#         jti = jwt_data['jti']
-
-#         conn = get_db_connection()
-#         session = conn.execute('SELECT login_time FROM active_sessions WHERE user_id = ?', (user_id,)).fetchone()
-#         revoked = conn.execute('SELECT * FROM revoked_tokens WHERE jti = ?', (jti,)).fetchone()
-#         conn.close()
-
-#         if revoked:
-#             return jsonify({'message': 'Token has been revoked'}), 401
-
-#         if session:
-#             try:
-#                 db_login_time = dateutil.parser.parse('login_time')
-#             except (IndexError, KeyError, TypeError) as e:
-#                 logger.error(f"Error parsing login time from session: {e}", exc_info=True)
-#                 return jsonify({'message': 'Error parsing session data'}), 500
-
-#             # db_login_time = dateutil.parser.parse(session[0])
-#             # if isinstance(session, sqlitecloud.Row):
-#             # db_login_time = dateutil.parser.parse(session['login_time'])
-#             # else:
-#             #     db_login_time = dateutil.parser.parse(session[0])  # Access tuple element with index
-
-#             if db_login_time.tzinfo is None:
-#                 db_login_time = db_login_time.replace(tzinfo=timezone.utc)
-#             token_login_time = datetime.fromtimestamp(login_time, timezone.utc)
-
-#             logger.debug(f"db_login_time: {db_login_time}, token_login_time: {token_login_time}")
-
-#             tolerance = timedelta(seconds=1)
-#             if db_login_time > token_login_time + tolerance:
-#                 return jsonify({'message': 'Token has been revoked'}), 401
-
-#         return fn(*args, **kwargs)
-#     return wrapper
 
 def token_required(fn):
     @wraps(fn)
@@ -221,8 +133,7 @@ def login():
         conn.close()
         
         if user:
-            # user_dict = {key: user[key] for key in user.keys()}
-            # user_dict = dict(user)  # Add this line to convert the row to a dictionary
+
 
             print(user)
             access_token = create_access_token(identity={'id': user[0], 'username': user[1], 'isAdmin': user[3]})
@@ -247,15 +158,7 @@ def login():
         return jsonify({'message': 'An error occurred during login'}), 500
 
 
-# @app.route('/logout', methods=['POST'])
-# @token_required
-# def logout():
-#     user = get_jwt_identity()
-#     conn = get_db_connection()
-#     conn.execute('DELETE FROM active_sessions WHERE user_id = ?', (user['id'],))
-#     conn.commit()
-#     conn.close()
-#     return jsonify({'message': 'Logged out successfully'})
+
 
 @app.route('/logout', methods=['POST'])
 @token_required
@@ -275,8 +178,7 @@ def logout():
 @app.route('/active_sessions', methods=['GET'])
 # @token_required
 def view_active_sessions():
-    # user = get_jwt_identity()
-    # logger.debug(f"User: {user} requested to view active sessions")
+
 
     try:
         conn = get_db_connection()
@@ -293,8 +195,7 @@ def view_active_sessions():
 @app.route('/active_sessions', methods=['DELETE'])
 # @token_required
 def clear_active_sessions():
-    # user = get_jwt_identity()
-    # logger.debug(f"User: {user} requested to clear all active sessions")
+
 
     try:
         conn = get_db_connection()
@@ -357,28 +258,6 @@ def get_families():
         logger.error(f"Error retrieving families: {e}")
         return jsonify({"error": "An error occurred while retrieving families"}), 500
 
-
-# @app.route('/families/<int:id>', methods=['GET'])
-# @token_required
-# def get_single_family(id):
-#     user = get_jwt_identity()
-#     logger.debug(f"User: {user} requested /families/{id}")
-#     try:
-#         conn = get_db_connection()
-#         conn.row_factory = sqlite3.Row
-#         family = conn.execute('SELECT * FROM families WHERE id = ?', (id,)).fetchone()
-#         conn.close()
-
-#         if family is None:
-#             logger.warning(f"Family with id {id} not found")
-#             return jsonify({"message": "Family not found"}), 404
-        
-#         response = jsonify(dict(family))
-#         logger.debug(f"Response for /families/{id}: {response.get_json()}")
-#         return response
-#     except Exception as e:
-#         logger.error(f"Error retrieving family {id}: {e}")
-#         return jsonify({"error": "An error occurred while retrieving the family"}), 500
 
 
 
@@ -523,153 +402,11 @@ def update_products(id):
             except Exception as e:
                 logger.error(f"Error closing connection: {str(e)}")
 
-
-# ADD FAMILY
-@app.route('/families', methods=['POST'])
-@token_required
-def add_family():
-    user = get_jwt_identity()
-
-    if not user.get('isAdmin', False):
-        return jsonify({'error': 'Admin access required'}), 403
-    
-    required_fields = {
-        'fullName': str,
-        'nationalID': str,
-        'familyBookID': str,
-        'phoneNumber': str,
-        'familyMembers': int,
-        'children': int,
-        'babies': int,
-        'adults': int
-    }
-    
-    data = request.get_json()
-    
-    # Validate required fields
-    for field, field_type in required_fields.items():
-        if field not in data:
-            return jsonify({'error': f'Missing required field: {field}'}), 400
-        if not isinstance(data[field], field_type):
-            return jsonify({'error': f'Invalid type for {field}, expected {field_type.__name__}'}), 400
-    
-    # Set default values for optional fields
-    optional_fields = {
-        'milk': 0,
-        'diapers': 0,
-        'basket': 0,
-        'clothing': 0,
-        'drugs': 0,
-        'other': '',
-        'taken': False
-    }
-    
-    for field, default in optional_fields.items():
-        if field not in data:
-            data[field] = default
-    
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            INSERT INTO families (
-                fullName, nationalID, familyBookID, phoneNumber,
-                familyMembers, children, babies, adults,
-                milk, diapers, basket, clothing, drugs, other, taken
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            data['fullName'],
-            data['nationalID'],
-            data['familyBookID'],
-            data['phoneNumber'],
-            data['familyMembers'],
-            data['children'],
-            data['babies'],
-            data['adults'],
-            data['milk'],
-            data['diapers'],
-            data['basket'],
-            data['clothing'],
-            data['drugs'],
-            data['other'],
-            data['taken']
-        ))
-        
-        family_id = cursor.lastrowid
-        print(user)
-        # Log the action
-        cursor.execute('''
-            INSERT INTO logs (familyID, userID, changeDescription, timestamp)
-            VALUES (?, ?, ?, ?)
-        ''', (family_id, user['id'], 'Family created', datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
-        
-        conn.commit()
-        return jsonify({
-            'message': 'Family added successfully',
-            'familyId': family_id
-        }), 201
-        
-    except sqlite3.Error as e:
-        conn.rollback()
-        return jsonify({'error': 'Database error', 'details': str(e)}), 500
-    finally:
-        if conn:
-            conn.close()
-
-
-# # Update Products Endpoint
-# @app.route('/families/<int:id>/products', methods=['PUT'])
-# @token_required
-# def update_products(id):
-#     user = get_jwt_identity()
-#     logger.debug(f"User: {user} requested update on family {id}")
-#     if not user:
-#         logger.warning('Unauthorized access attempt')
-#         return jsonify({'message': 'Unauthorized'}), 401
-
-#     try:
-#         data = request.json
-#         milk = data.get('milk')
-#         diapers = data.get('diapers')
-#         basket = data.get('basket')
-#         clothing = data.get('clothing')
-#         drugs = data.get('drugs')
-#         other = data.get('other')
-#         taken = data.get('taken')
-
-#         conn = get_db_connection()
-#         conn.execute('''
-#             UPDATE families SET milk = ?, diapers = ?, basket = ?, clothing = ?, drugs = ?, other = ?, taken = ?
-#             WHERE id = ?
-#         ''', (milk, diapers, basket, clothing, drugs, other, taken, id))
-#         conn.commit()
-#         user_info = conn.execute('SELECT username FROM users WHERE id = ?', (user['id'],)).fetchone()
-#         username = user_info[0] if user_info else 'Unknown'  # Access by index instead of name
-#         # user_info = conn.execute('SELECT username FROM users WHERE id = ?', (user['id'],)).fetchone()
-#         # username = user_info['username'] if user_info else 'Unknown'
-#         conn.close()
-
-#         change_description = f'User {username} (ID: {user["id"]}) updated family {id}'
-#         log_change(id, user['id'], change_description)
-#         logger.debug(f"Emitting update: {change_description}")
-#         # socketio.emit('update_family', {'family_id': id, 'user_id': user['id'], 'username': username, 'change_description': change_description})
-#         socketio.emit('update_family', {'family_id': id, 'user_id': user['id'], 'username': username, 'change_description': change_description})
-#         return jsonify({'message': 'Product updated successfully'})
-#     except Exception as e:
-#         logger.error(f"Error updating products for family {id}: {e}")
-#         return jsonify({"error": "An error occurred while updating products"}), 500
-
-# Error handler to catch all exceptions and log them
 @app.errorhandler(Exception)
 def handle_exception(e):
     logger.error(f"Unhandled Exception: {e}")
     return jsonify({"error": "An internal server error occurred"}), 500
 
-# Start the Server
-# if __name__ == '__main__':
-#     app.debug = False
-#     socketio.run(app, debug=False)
 if __name__ == '__main__':
     app.debug = True
     socketio.run(app, debug=True, use_reloader=False, host='0.0.0.0', port=5000)
